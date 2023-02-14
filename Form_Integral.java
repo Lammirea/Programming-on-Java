@@ -82,7 +82,13 @@ public class Form_Integral extends JFrame{
         int numRows = 0;
         DefaultTableModel model = new DefaultTableModel(numRows,columnNames.length);
         model.setColumnIdentifiers(columnNames);
-        table = new JTable(model);
+        table = new JTable(model)
+        {
+            public boolean isCellEditable(int row, int column) {
+                //Блокируем все,кроме четвёртой
+                return column != 3;
+            }
+        };
         table.setSize(530,250);
         table.setBackground(new Color(164,191,220));
         table.addMouseListener(new TableMouseClicked());
@@ -139,21 +145,27 @@ public class Form_Integral extends JFrame{
     class BtnEventListener extends Component implements ActionListener{
         //Здесь будет выполняться вычисление интеграла
         public void actionPerformed (ActionEvent e){
-            double b = Double.valueOf(highText.getText()),
-                    a = Double.valueOf(lowText.getText()),
-                    h = Double.valueOf(StepText.getText()),
-                    integral = 0;
+            double integral = 0;
+
+            DefaultTableModel tblModel = (DefaultTableModel) table.getModel();
+            double b = Double.valueOf(tblModel.getValueAt(table.getSelectedRow(),0).toString()),
+            a = Double.valueOf(tblModel.getValueAt(table.getSelectedRow(),1).toString()),
+            h = Double.valueOf(tblModel.getValueAt(table.getSelectedRow(),2).toString());
 
             if(h > b || h < 0.0 || a > b){
                 JOptionPane.showMessageDialog(null, "Введены некорректные данные!");
             }else {
                 Function function;
-                for (int i = 0; i < (b - a) / h; i++) {
-                    integral += h * (0.5 * (Math.tan(a + i * h) + Math.tan(a + (i + 1) * h)));
+                for (double i = a; i < b; i += h) {
+                    if(b - i > h){
+                        integral += h * (0.5 * (Math.tan(i) + Math.tan(i + h)));
+                    }
+                    else{
+                        integral += (b - i) * (0.5 * (Math.tan(i) + Math.tan(i + b)));
+                    }
                 }
 
                 //Записываем данные в таблицу
-                DefaultTableModel tblModel = (DefaultTableModel) table.getModel();
                 if (table.getSelectedColumnCount() == 1) {
                     String high = highText.getText(),
                             low = lowText.getText(),
@@ -188,6 +200,7 @@ public class Form_Integral extends JFrame{
 
                     DefaultTableModel tblModel = (DefaultTableModel) table.getModel();
                     tblModel.addRow(data);
+
 
                     //очищаем поле для новых данных
                     highText.setText("");
