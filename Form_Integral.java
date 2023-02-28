@@ -5,12 +5,15 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.LinkedList;
 import java.util.function.Function;
 
 public class Form_Integral extends JFrame{
     private JButton addbtn = new JButton("Добавить"),
             delbtn = new JButton("Удалить"),
-            countbtn = new JButton("Вычислить");
+            countbtn = new JButton("Вычислить"),
+            cleanbtn = new JButton("Очистить"),
+            fillbtn = new JButton(("Заполнить"));
 
     private JTextField highText = new JTextField("",10),
             lowText = new JTextField("",10),
@@ -21,6 +24,8 @@ public class Form_Integral extends JFrame{
             steplabel = new JLabel("Введите шаг интегрирования: ");
 
     private JTable table;
+    // LinkedList
+    private LinkedList<RecIntegral> dataList = new LinkedList<RecIntegral>();
     // JFrame
     static JFrame f;
 
@@ -72,9 +77,13 @@ public class Form_Integral extends JFrame{
         countbtn.addActionListener(new BtnEventListener());
         addbtn.addActionListener(new AddDataBtn());
         delbtn.addActionListener(new DeleteDataBtn());
+        cleanbtn.addActionListener(new CleanDataBtn());
+        fillbtn.addActionListener(new FillDataBtn());
         btnpanel.add(addbtn);
         btnpanel.add(delbtn);
         btnpanel.add(countbtn);
+        btnpanel.add(cleanbtn);
+        btnpanel.add(fillbtn);
         btnpanel.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
 
         //Панель с табличкой
@@ -84,9 +93,9 @@ public class Form_Integral extends JFrame{
         model.setColumnIdentifiers(columnNames);
         table = new JTable(model)
         {
-            public boolean isCellEditable(int row, int column) {
-                //Блокируем все,кроме четвёртой
-                return column != 3;
+            public boolean isCellEditable(int row, int column)
+            {
+                return column !=3;
             }
         };
         table.setSize(530,250);
@@ -145,43 +154,40 @@ public class Form_Integral extends JFrame{
     class BtnEventListener extends Component implements ActionListener{
         //Здесь будет выполняться вычисление интеграла
         public void actionPerformed (ActionEvent e){
-            double integral = 0;
+            double b = Double.valueOf(highText.getText()),
+                    a = Double.valueOf(lowText.getText()),
+                    h = Double.valueOf(StepText.getText()),
+                    integral = 0;
 
+            Function function;
+            for (double i = a; i < b; i+=h)
+            {
+                integral += h * (0.5 * (Math.tan(a) + Math.tan((i + h))));
+            }
+
+            //Записываем данные в таблицу
             DefaultTableModel tblModel = (DefaultTableModel) table.getModel();
-            double b = Double.valueOf(tblModel.getValueAt(table.getSelectedRow(),0).toString()),
-            a = Double.valueOf(tblModel.getValueAt(table.getSelectedRow(),1).toString()),
-            h = Double.valueOf(tblModel.getValueAt(table.getSelectedRow(),2).toString());
+            if (table.getSelectedColumnCount() == 1)
+            {
+                String high = highText.getText(),
+                        low = lowText.getText(),
+                        Step = StepText.getText();
 
-            if(h > b || h < 0.0 || a > b){
-                JOptionPane.showMessageDialog(null, "Введены некорректные данные!");
-            }else {
-                Function function;
-                for (double i = a; i < b; i += h) {
-                    if(b - i > h){
-                        integral += h * (0.5 * (Math.tan(i) + Math.tan(i + h)));
-                    }
-                    else{
-                        integral += (b - i) * (0.5 * (Math.tan(i) + Math.tan(i + b)));
-                    }
+                tblModel.setValueAt(high, table.getSelectedRow(), 0);
+                tblModel.setValueAt(low, table.getSelectedRow(), 1);
+                tblModel.setValueAt(Step, table.getSelectedRow(), 2);
+                tblModel.setValueAt(String.valueOf(integral), table.getSelectedRow(), 3);
+
+            }
+            else
+            {
+                if (table.getRowCount() == 0)
+                {
+                    JOptionPane.showMessageDialog(null, "Таблица пустая!");
                 }
-
-                //Записываем данные в таблицу
-                if (table.getSelectedColumnCount() == 1) {
-                    String high = highText.getText(),
-                            low = lowText.getText(),
-                            Step = StepText.getText();
-
-                    tblModel.setValueAt(high, table.getSelectedRow(), 0);
-                    tblModel.setValueAt(low, table.getSelectedRow(), 1);
-                    tblModel.setValueAt(Step, table.getSelectedRow(), 2);
-                    tblModel.setValueAt(String.valueOf(integral), table.getSelectedRow(), 3);
-
-                } else {
-                    if (table.getRowCount() == 0) {
-                        JOptionPane.showMessageDialog(null, "Таблица пустая!");
-                    } else {
-                        JOptionPane.showMessageDialog(null, "Выберите строку,которую надо вычислить!");
-                    }
+                else
+                {
+                    JOptionPane.showMessageDialog(null, "Выберите строку,которую надо вычислить!");
                 }
             }
         }
@@ -189,7 +195,7 @@ public class Form_Integral extends JFrame{
 
     //Добавление информации в таблицу
     class AddDataBtn extends Component implements  ActionListener{
-        public void actionPerformed (ActionEvent e) {
+        public void actionPerformed (ActionEvent e){
             if(Double.valueOf(StepText.getText()) > Double.valueOf(highText.getText()) || Double.valueOf(StepText.getText()) < 0.0 || Double.valueOf(lowText.getText())>Double.valueOf(highText.getText())){
                 JOptionPane.showMessageDialog(null, "Введены некорректные данные");
             }else {
@@ -198,9 +204,19 @@ public class Form_Integral extends JFrame{
                 } else {
                     String data[] = {highText.getText(), lowText.getText(), StepText.getText()};
 
+                    try {
+                        ExctentionFoo(highText.getText(),lowText.getText(),StepText.getText());
+                    } catch (IntegralException ex) {
+                        throw new RuntimeException(ex);
+                    }
+
+                    RecIntegral recIntegral = new RecIntegral();
+
+                    recIntegral.setData(data);
+                    dataList.add(recIntegral);
+
                     DefaultTableModel tblModel = (DefaultTableModel) table.getModel();
                     tblModel.addRow(data);
-
 
                     //очищаем поле для новых данных
                     highText.setText("");
@@ -209,8 +225,45 @@ public class Form_Integral extends JFrame{
                 }
             }
         }
+        public void ExctentionFoo(String high,String low,String step) throws IntegralException{
+            if (Double.valueOf(high)<0.000001 || Double.valueOf(high)>1000000)
+            {
+                throw new IntegralException("Верхний предел не может иметь такое значение!");
+            }
+            else if (Double.valueOf(low)<0.000001 || Double.valueOf(low)>1000000)
+            {
+                throw new IntegralException("Нижний предел не может иметь такое значение!");
+            }
+            else if (Double.valueOf(step)<0.000001 || Double.valueOf(step)>1000000)
+            {
+                throw new IntegralException("ШАГ не может иметь такое значение!");
+            }
+        }
     }
 
+    //Функция очищающая таблицу
+    class CleanDataBtn extends Component implements  ActionListener
+    {
+        public void actionPerformed(ActionEvent e){
+            DefaultTableModel tblModel = (DefaultTableModel)table.getModel();
+            tblModel.setRowCount(0);
+        }
+    }
+
+    //Функция, заполняющая таблицу данными из LinkedList`а
+    class FillDataBtn extends Component implements  ActionListener
+    {
+        public void actionPerformed(ActionEvent e){
+            DefaultTableModel tblModel = (DefaultTableModel) table.getModel();
+
+            tblModel.setRowCount(0);
+
+            for(int i = 0; i < dataList.size(); i++)
+            {
+                tblModel.addRow(dataList.get(i).dataFromList);
+            }
+        }
+    }
     //Удаление данных из таблицы
     class DeleteDataBtn extends Component implements ActionListener{
         public void actionPerformed(ActionEvent e){
@@ -229,4 +282,25 @@ public class Form_Integral extends JFrame{
             }
         }
     }
+
+    class RecIntegral
+    {
+        String dataFromList[] = new String[3];
+
+        public void setData(String new_data[])
+        {
+            dataFromList=new_data;
+        }
+    }
+
+    //Класс обработки исключений значений класса RecIntegral
+    class IntegralException extends Exception
+    {
+        public IntegralException(String message)
+        {
+            JOptionPane.showMessageDialog(null, message);
+            //super(message);
+        }
+    }
+
 }
